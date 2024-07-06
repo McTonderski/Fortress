@@ -1,0 +1,21 @@
+services:
+  db:
+    image: arminc/clair-db
+    container_name: clairdb
+    restart: always
+
+  clair:
+    image: arminc/clair-local-scan
+    container_name: clairlocal
+    depends_on:
+      - db
+    ports:
+      - "6060:6060"
+    restart: always
+
+  fastapi_app:
+    image: localhost:5000/dockerfortress
+    ports:
+      - "8123:8000"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"

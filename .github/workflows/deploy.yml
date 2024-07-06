@@ -1,0 +1,54 @@
+name: Docker Build and Deploy
+
+on:
+  repository_dispatch:
+  push:
+    branches:
+      - main # Adjust branch name as needed
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
+  build:
+    runs-on: self-hosted
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: |
+          docker build --network=host \
+          -t localhost:5000/dockerfortress \
+          --label org.opencontainers.image.title=${{ github.repository }} \
+          --label org.opencontainers.image.created=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+          .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push localhost:5000/dockerfortress
+
+  deploy:
+    runs-on: self-hosted
+
+    needs: build
+
+    steps:
+      - name: Stop existing container (if running)
+        run: docker compose down || true
+
+      - name: Run Docker container
+        run: docker compose up -d
